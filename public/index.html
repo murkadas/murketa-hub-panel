@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Murketa Hub · Painel de Keys</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>.cleanup{display:block;margin-top:10px;background:transparent;border:0;color:#ff8eac;padding:0;font:10px inherit;cursor:pointer}.cleanup:hover{text-decoration:underline}</style>
+</head>
+<body>
+  <div class="stars"></div><div class="nebula nebula-a"></div><div class="nebula nebula-b"></div>
+  <div id="loginView" class="login-shell">
+    <div class="login-card glass">
+      <div class="brand-mark">✦</div>
+      <p class="eyebrow">MURKETA HUB · ACCESS CONTROL</p>
+      <h1>Entre no seu<br><span>painel privado.</span></h1>
+      <p class="muted">Gerencie licenças, validade e vínculos de HWID em um só lugar.</p>
+      <form id="loginForm"><label>Senha administrativa<input id="secret" type="password" autocomplete="current-password" placeholder="Digite sua senha" required></label><button class="primary" type="submit">Acessar painel <span>→</span></button><p id="loginError" class="error"></p></form>
+    </div>
+  </div>
+
+  <main id="appView" class="app hidden">
+    <aside class="sidebar glass">
+      <div class="logo"><div class="logo-orbit">✦</div><div><strong>MURKETA</strong><small>HUB / LICENSE</small></div></div>
+      <nav><button class="nav-item active" data-section="dashboard"><span>⌂</span>Visão geral</button><button class="nav-item" data-section="keys"><span>◈</span>Keys do administrador</button></nav>
+      <div class="sidebar-bottom"><span class="status-dot"></span><span>Sistema protegido</span><button id="logout" class="logout">Sair</button></div>
+    </aside>
+    <section class="content">
+      <header class="topbar"><div><p class="eyebrow">PAINEL ADMINISTRATIVO</p><h2 id="pageTitle">Visão geral</h2></div><button id="refresh" class="ghost">↻ Atualizar</button></header>
+      <section class="hero"><div><p class="eyebrow purple">MURKETA HUB · COMMAND CENTER</p><h1>Controle sua galáxia<br><span>de licenças.</span></h1><p>Gere, acompanhe e proteja o acesso dos seus clientes.</p></div><div class="planet"><div class="planet-core"></div><div class="ring ring-one"></div><div class="ring ring-two"></div></div></section>
+      <section class="stats"><article class="stat glass"><span class="stat-icon violet">✦</span><div><small>Total de keys</small><strong id="total">0</strong></div></article><article class="stat glass"><span class="stat-icon green">✓</span><div><small>Ativas</small><strong id="active">0</strong></div></article><article class="stat glass"><span class="stat-icon gold">◷</span><div><small>Aguardando vínculo</small><strong id="waiting">0</strong></div></article><article class="stat glass"><span class="stat-icon red">×</span><div><small>Revogadas</small><strong id="revoked">0</strong></div></article></section>
+      <section class="workspace">
+        <div class="generate glass"><div class="section-heading"><div><p class="eyebrow purple">NOVA LICENÇA</p><h3>Gerar key</h3></div><span class="sparkle">✧</span></div><form id="generateForm"><label>Nome do cliente<input id="clientName" placeholder="Ex.: João · Discord" maxlength="80"></label><label>Validade<select id="duration"><option value="1h">1 hora</option><option value="1d">1 dia</option><option value="7d">7 dias</option><option value="30d" selected>30 dias</option><option value="2w">2 semanas</option><option value="permanente">Permanente</option></select></label><button class="primary" type="submit">＋ Gerar nova key</button></form><div id="generated" class="generated hidden"><small>KEY GERADA</small><div><code id="generatedKey"></code><button id="copyGenerated" class="copy">Copiar</button></div></div><p class="hint">A validade começa no momento da geração. O HWID é vinculado no primeiro uso.</p></div>
+        <div class="keys glass"><div class="section-heading"><div><p class="eyebrow purple">LICENÇAS</p><h3>Minhas keys <span id="keyCount" class="count">0</span></h3><button id="cleanup" class="cleanup">⌫ Limpar expiradas/revogadas</button></div><div class="search"><span>⌕</span><input id="search" placeholder="Cliente, Discord ou key..."></div></div><div class="table-wrap"><table><thead><tr><th>CLIENTE / KEY</th><th>STATUS</th><th>VALIDADE</th><th>ÚLTIMO ACESSO</th><th>AÇÕES</th></tr></thead><tbody id="keyRows"></tbody></table><div id="empty" class="empty hidden">Nenhuma key encontrada.</div></div></div>
+      </section>
+    </section>
+  </main>
+  <div id="toast" class="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
