@@ -189,7 +189,7 @@ if not authenticate() then
 end
 -- O restante do seu script MURK vem abaixo deste bloco.
 local P=game:GetService("Players")local R=game:GetService("RunService")local U=game:GetService("UserInputService")local T=game:GetService("TweenService")local LP=P.LocalPlayer local C=workspace.CurrentCamera
-local cfg={En=false,Box=true,Nm=true,Dst=true,Hp=true,CarESP=false,CarBox=true,CarNm=true,CarDst=true,EspHue=0.58,CarHue=0.10,Fs=14,FriendQuery="",Friends={},Team=false,Aim=false,AimPart="Head",Fov=150,Smooth=2,WallCheck=true,IgnoreTeam=true,MaxDist=500}
+local cfg={En=false,Box=true,Nm=true,Dst=true,Hp=true,CarESP=false,CarBox=true,CarNm=true,CarDst=true,EspHue=0.58,CarHue=0.10,Fs=14,FriendQuery="",Friends={},Team=false,Aim=false,AimPart="Head",Fov=150,Smooth=2,WallCheck=true,IgnoreTeam=true,MaxDist=500,NoRecoil=false,GunGiant=false,GunSize=2}
 local CFG_FILE="MurkESP_Config.json"
 local function loadCfg()
     if type(isfile)~="function" or type(readfile)~="function" or not isfile(CFG_FILE) then return end
@@ -507,7 +507,7 @@ mkDrop(ap,"Parte","AimPart",{"Head","Torso","HumanoidRootPart"},4)
 mkFriendControl(ap,5)
 mkSld(ap,"FOV","Fov",50,600,6,10)mkSld(ap,"Distancia","MaxDist",50,2000,7,50)mkSld(ap,"Suavidade","Smooth",0,5,8,0.1)
 local gp=pages["GUN"]
-local ph=Instance.new("TextLabel")ph.Size=UDim2.new(1,0,0,40)ph.BackgroundTransparency=1 ph.Text="Em breve..."ph.TextColor3=Color3.fromRGB(120,120,120)ph.Font=Enum.Font.Gotham ph.TextSize=14 ph.LayoutOrder=1 ph.Parent=gp
+mkTog(gp,"Sem recoil","NoRecoil",1)mkTog(gp,"Arma gigante","GunGiant",2)mkSld(gp,"Tamanho da arma","GunSize",1,10,3,0.5)
 local tb={}
 local function sw(n)ct.Text=n for tn,pg in pairs(pages)do pg.Visible=(tn==n)end for tn,bt in pairs(tb)do if tn==n then T:Create(bt,TweenInfo.new(0.15),{BackgroundColor3=Color3.fromRGB(30,10,45)}):Play()bt.TextColor3=Color3.fromRGB(200,100,255)else T:Create(bt,TweenInfo.new(0.15),{BackgroundColor3=Color3.fromRGB(12,12,18)}):Play()bt.TextColor3=Color3.fromRGB(140,140,150)end end end
 local function mkTab(n,o)local b=Instance.new("TextButton")b.Size=UDim2.new(1,0,0,36)b.BackgroundColor3=Color3.fromRGB(12,12,18)b.Text="  "..n b.TextColor3=Color3.fromRGB(140,140,150)b.Font=Enum.Font.GothamBold b.TextSize=14 b.TextXAlignment=Enum.TextXAlignment.Left b.BorderSizePixel=0 b.AutoButtonColor=false b.LayoutOrder=o b.Parent=ts Instance.new("UICorner",b).CornerRadius=UDim.new(0,6)b.MouseButton1Click:Connect(sf(function()sw(n)end))tb[n]=b end
@@ -814,6 +814,85 @@ local function updAim()
         C.CFrame=C.CFrame:Lerp(CFrame.new(C.CFrame.Position,t.Position),factor)
     end
 end
+local recoilHooks={}
+local gunScaleData={}
+local gunTool=nil
+local function currentGun()
+    if not LP.Character then return nil end
+    for _,obj in ipairs(LP.Character:GetChildren()) do
+        if obj:IsA("Tool") then return obj end
+    end
+    return nil
+end
+local function restoreRecoil()
+    for _,data in pairs(recoilHooks) do
+        if data.env then
+            data.env.ShakeCamera=data.shake
+            data.env.RotCamera=data.rot
+        end
+    end
+    recoilHooks={}
+end
+local function disableRecoil(tool)
+    if type(getsenv)~="function" then return end
+    for _,obj in ipairs(tool:GetDescendants()) do
+        if obj:IsA("LocalScript") and not recoilHooks[obj] then
+            local ok,env=pcall(getsenv,obj)
+            if ok and type(env)=="table" then
+                local shake=env.ShakeCamera
+                local rot=env.RotCamera
+                if type(shake)=="function" or type(rot)=="function" then
+                    recoilHooks[obj]={env=env,shake=shake,rot=rot}
+                    if type(shake)=="function" then env.ShakeCamera=function()end end
+                    if type(rot)=="function" then env.RotCamera=function()end end
+                end
+            end
+        end
+    end
+end
+local function restoreGunScale()
+    for obj,data in pairs(gunScaleData) do
+        if obj and obj.Parent then
+            if data.kind=="part" then obj.Size=data.value end
+            if data.kind=="mesh" then obj.Scale=data.value end
+        end
+    end
+    gunScaleData={}
+end
+local function applyGunScale(tool,scale)
+    for _,obj in ipairs(tool:GetDescendants()) do
+        if obj:IsA("BasePart") and not gunScaleData[obj] then
+            gunScaleData[obj]={kind="part",value=obj.Size}
+        elseif obj:IsA("SpecialMesh") and not gunScaleData[obj] then
+            gunScaleData[obj]={kind="mesh",value=obj.Scale}
+        end
+        local data=gunScaleData[obj]
+        if data and data.kind=="part" then obj.Size=data.value*scale end
+        if data and data.kind=="mesh" then obj.Scale=data.value*scale end
+    end
+end
+local function updateGunEffects()
+    local tool=currentGun()
+    if tool~=gunTool then
+        restoreRecoil()
+        restoreGunScale()
+        gunTool=tool
+    end
+    if not tool then
+        restoreRecoil()
+        return
+    end
+    if cfg.NoRecoil then
+        disableRecoil(tool)
+    else
+        restoreRecoil()
+    end
+    if cfg.GunGiant then
+        applyGunScale(tool,math.max(1,tonumber(cfg.GunSize) or 2))
+    else
+        restoreGunScale()
+    end
+end
 fovC=Drawing.new("Circle")fovC.Thickness=1 fovC.NumSides=64 fovC.Filled=false fovC.Color=Color3.fromRGB(140,60,220)fovC.Transparency=1 fovC.Visible=false
 local function setStreamerMode(enabled)
     streamerMode=enabled==true
@@ -843,6 +922,7 @@ R.RenderStepped:Connect(function()hue=(hue+0.003)%1 for _,o in ipairs(rgb)do pca
         end
         sf(updateCarESP)()
     end
+    sf(updateGunEffects)()
     sf(updAim)()
 end)
 local function togE()cfg.En=not cfg.En saveCfg()if cfg.En then et.Text="ESP: ATIVADO"for _,p in ipairs(P:GetPlayers())do if p~=LP then sf(mkESP)(p)end end else et.Text="ESP: DESATIVADO"sf(clrESP)()end end
