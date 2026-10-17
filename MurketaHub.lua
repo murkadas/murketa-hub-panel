@@ -189,7 +189,7 @@ if not authenticate() then
 end
 -- O restante do seu script MURK vem abaixo deste bloco.
 local P=game:GetService("Players")local R=game:GetService("RunService")local U=game:GetService("UserInputService")local T=game:GetService("TweenService")local LP=P.LocalPlayer local C=workspace.CurrentCamera
-local cfg={En=false,Box=true,Nm=true,Dst=true,Hp=true,CarESP=false,CarBox=true,CarNm=true,CarDst=true,EspHue=0.58,CarHue=0.10,Fs=14,FriendQuery="",Friends={},Team=false,Aim=false,AimPart="Head",Fov=150,Smooth=2,WallCheck=true,IgnoreTeam=true,MaxDist=500,NoRecoil=false,GunGiant=false,GunSize=2}
+local cfg={En=false,Box=true,Nm=true,Dst=true,Hp=true,CarESP=false,CarBox=true,CarNm=true,CarDst=true,EspHue=0.58,CarHue=0.10,Fs=14,FriendQuery="",Friends={},Team=false,Aim=false,AimPart="Head",Fov=150,Smooth=2,WallCheck=true,IgnoreTeam=true,MaxDist=500,NoRecoil=false,GunGiant=false,GunSize=2,GunSound="Normal"}
 local CFG_FILE="MurkESP_Config.json"
 local function loadCfg()
     if type(isfile)~="function" or type(readfile)~="function" or not isfile(CFG_FILE) then return end
@@ -507,7 +507,7 @@ mkDrop(ap,"Parte","AimPart",{"Head","Torso","HumanoidRootPart"},4)
 mkFriendControl(ap,5)
 mkSld(ap,"FOV","Fov",50,600,6,10)mkSld(ap,"Distancia","MaxDist",50,2000,7,50)mkSld(ap,"Suavidade","Smooth",0,5,8,0.1)
 local gp=pages["GUN"]
-mkTog(gp,"Sem recoil","NoRecoil",1)mkTog(gp,"Arma gigante (visual)","GunGiant",2)mkSld(gp,"Tamanho (visual)","GunSize",1,2,3,0.1)
+mkTog(gp,"Sem recoil","NoRecoil",1)mkTog(gp,"Arma gigante (visual)","GunGiant",2)mkSld(gp,"Tamanho (visual)","GunSize",1,2,3,0.1)mkDrop(gp,"Som da arma","GunSound",{"Normal","Pato","Tiro realista"},4)
 local tb={}
 local function sw(n)ct.Text=n for tn,pg in pairs(pages)do pg.Visible=(tn==n)end for tn,bt in pairs(tb)do if tn==n then T:Create(bt,TweenInfo.new(0.15),{BackgroundColor3=Color3.fromRGB(30,10,45)}):Play()bt.TextColor3=Color3.fromRGB(200,100,255)else T:Create(bt,TweenInfo.new(0.15),{BackgroundColor3=Color3.fromRGB(12,12,18)}):Play()bt.TextColor3=Color3.fromRGB(140,140,150)end end end
 local function mkTab(n,o)local b=Instance.new("TextButton")b.Size=UDim2.new(1,0,0,36)b.BackgroundColor3=Color3.fromRGB(12,12,18)b.Text="  "..n b.TextColor3=Color3.fromRGB(140,140,150)b.Font=Enum.Font.GothamBold b.TextSize=14 b.TextXAlignment=Enum.TextXAlignment.Left b.BorderSizePixel=0 b.AutoButtonColor=false b.LayoutOrder=o b.Parent=ts Instance.new("UICorner",b).CornerRadius=UDim.new(0,6)b.MouseButton1Click:Connect(sf(function()sw(n)end))tb[n]=b end
@@ -816,7 +816,10 @@ local function updAim()
 end
 local recoilHooks={}
 local gunScaleData={}
+local gunSoundData={}
 local gunTool=nil
+local gunSoundTool=nil
+local gunSoundMode=nil
 local function currentGun()
     if not LP.Character then return nil end
     for _,obj in ipairs(LP.Character:GetChildren()) do
@@ -871,6 +874,36 @@ local function applyGunScale(tool,scale)
         if data and data.kind=="mesh" then obj.Scale=data.value*scale end
     end
 end
+local gunSoundIds={Pato="rbxassetid://162958822",["Tiro realista"]="rbxassetid://2811598570"}
+local function isShotSound(sound)
+    local n=string.lower(sound.Name or "")
+    if n:find("reload",1,true) or n:find("equip",1,true) or n:find("empty",1,true) or n:find("hit",1,true) or n:find("impact",1,true) then return false end
+    return n:find("fire",1,true) or n:find("shoot",1,true) or n:find("shot",1,true) or n:find("muzzle",1,true) or n:find("blast",1,true)
+end
+local function restoreGunSounds()
+    for sound,id in pairs(gunSoundData) do
+        if sound and sound.Parent then pcall(function()sound.SoundId=id end) end
+    end
+    gunSoundData={}
+    gunSoundTool=nil
+    gunSoundMode=nil
+end
+local function applyGunSound(tool)
+    local mode=tostring(cfg.GunSound or "Normal")
+    if mode=="Normal" then restoreGunSounds() return end
+    if gunSoundTool==tool and gunSoundMode==mode then return end
+    restoreGunSounds()
+    local id=gunSoundIds[mode]
+    if not id then return end
+    for _,obj in ipairs(tool:GetDescendants()) do
+        if obj:IsA("Sound") and isShotSound(obj) then
+            gunSoundData[obj]=obj.SoundId
+            pcall(function()obj.SoundId=id end)
+        end
+    end
+    gunSoundTool=tool
+    gunSoundMode=mode
+end
 local function updateGunEffects()
     local tool=currentGun()
     if tool~=gunTool then
@@ -880,6 +913,7 @@ local function updateGunEffects()
     end
     if not tool then
         restoreRecoil()
+        restoreGunSounds()
         return
     end
     if cfg.NoRecoil then
@@ -892,6 +926,7 @@ local function updateGunEffects()
     else
         restoreGunScale()
     end
+    applyGunSound(tool)
 end
 fovC=Drawing.new("Circle")fovC.Thickness=1 fovC.NumSides=64 fovC.Filled=false fovC.Color=Color3.fromRGB(140,60,220)fovC.Transparency=1 fovC.Visible=false
 local function setStreamerMode(enabled)
