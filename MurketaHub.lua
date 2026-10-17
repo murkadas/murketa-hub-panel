@@ -514,6 +514,7 @@ mkFriendControl(ap,5)
 mkSld(ap,"FOV","Fov",50,600,6,10)mkSld(ap,"Distancia","MaxDist",50,2000,7,50)mkSld(ap,"Suavidade","Smooth",0,5,8,0.1)
 local gp=pages["GUN"]
 mkTog(gp,"Sem recoil (visual)","NoRecoil",1)mkTog(gp,"Arma gigante (visual)","GunGiant",2)mkSld(gp,"Tamanho (visual)","GunSize",1,2,3,0.1)mkDrop(gp,"Som da arma","GunSound",{"Normal","Pato","Tiro realista"},4)
+mkTog(gp,"Sem recoil","NoRecoil",1)mkTog(gp,"Arma gigante (visual)","GunGiant",2)mkSld(gp,"Tamanho (visual)","GunSize",1,2,3,0.1)mkDrop(gp,"Som da arma","GunSound",{"Normal","Pato","Tiro realista"},4)
 mkAction(gp,"Resetar som da arma",5,function()cfg.GunSound="Normal"saveCfg()if resetGunSoundsAction then resetGunSoundsAction()end end)
 local tb={}
 local function sw(n)ct.Text=n for tn,pg in pairs(pages)do pg.Visible=(tn==n)end for tn,bt in pairs(tb)do if tn==n then T:Create(bt,TweenInfo.new(0.15),{BackgroundColor3=Color3.fromRGB(30,10,45)}):Play()bt.TextColor3=Color3.fromRGB(200,100,255)else T:Create(bt,TweenInfo.new(0.15),{BackgroundColor3=Color3.fromRGB(12,12,18)}):Play()bt.TextColor3=Color3.fromRGB(140,140,150)end end end
