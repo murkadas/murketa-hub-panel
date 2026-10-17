@@ -926,9 +926,7 @@ local function registerRecoilSounds(tool)
                 return obj.Played:Connect(function()
                     if cfg.NoRecoil then
                         recoilCameraBase=recoilLastCamera
-                        local hum=LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-                        recoilOffsetBase=hum and hum.CameraOffset or recoilLastOffset
-                        if hum and recoilOffsetBase.Magnitude>0.05 then recoilOffsetBase=recoilLastOffset end
+                        recoilOffsetBase=Vector3.zero
                         recoilCameraUntil=os.clock()+0.32
                     end
                 end)
@@ -944,7 +942,7 @@ local function clearRecoilSounds()
     recoilCameraUntil=0
 end
 pcall(function()R:UnbindFromRenderStep("MurkNoRecoilCamera")end)
-R:BindToRenderStep("MurkNoRecoilCamera",Enum.RenderPriority.Camera.Value+1,function()
+R:BindToRenderStep("MurkNoRecoilCamera",Enum.RenderPriority.Camera.Value+10,function()
     if cfg.NoRecoil and recoilCameraBase and os.clock()<recoilCameraUntil then
         local current=C.CFrame
         local position=current.Position
