@@ -203,6 +203,7 @@ local function saveCfg()
 end
 loadCfg()
 local cache={}local gui,frame,mtog,sbar,content,licenseLabel,homeExpiryLabel,homeStreamerButton local open=false local collapsed=false local streamerMode=false local hue=0 local isM=U.TouchEnabled and not U.MouseEnabled
+local resetGunSoundsAction=nil
 local rgb={}local fovC=nil
 local function sc()return Color3.fromHSV(hue,0.8,1)end
 local function espColor()return Color3.fromHSV(tonumber(cfg.EspHue)or 0.58,0.85,1)end
@@ -266,6 +267,11 @@ local s=Instance.new("UIStroke")s.Thickness=1 s.Color=Color3.fromRGB(40,20,60)s.
 local lt=Instance.new("TextLabel")lt.Size=UDim2.new(1,-110,1,0)lt.Position=UDim2.new(0,12,0,0)lt.BackgroundTransparency=1 lt.Text=lab lt.TextColor3=Color3.fromRGB(220,220,220)lt.Font=Enum.Font.Gotham lt.TextSize=13 lt.TextXAlignment=Enum.TextXAlignment.Left lt.Parent=c
 local btn=Instance.new("TextButton")btn.Size=UDim2.new(0,90,0,24)btn.Position=UDim2.new(1,-102,0.5,-12)btn.BackgroundColor3=Color3.fromRGB(35,35,45)btn.Text=cfg[k]btn.TextColor3=Color3.fromRGB(220,100,255)btn.Font=Enum.Font.GothamBold btn.TextSize=12 btn.BorderSizePixel=0 btn.AutoButtonColor=false btn.Parent=c Instance.new("UICorner",btn).CornerRadius=UDim.new(0,5)
 btn.MouseButton1Click:Connect(sf(function()local idx=1 for i,v in ipairs(opts)do if v==cfg[k]then idx=i break end end idx=idx%#opts+1 cfg[k]=opts[idx]saveCfg()btn.Text=cfg[k]end))end
+local function mkAction(par,lab,ord,fn)
+    local b=Instance.new("TextButton") b.Size=UDim2.new(1,0,0,34) b.BackgroundColor3=Color3.fromRGB(55,25,35) b.Text=lab b.TextColor3=Color3.fromRGB(255,190,190) b.Font=Enum.Font.GothamBold b.TextSize=12 b.BorderSizePixel=0 b.AutoButtonColor=false b.LayoutOrder=ord b.Parent=par
+    Instance.new("UICorner",b).CornerRadius=UDim.new(0,6)
+    b.MouseButton1Click:Connect(sf(fn))
+end
 local function mkColorPicker(par,lab,k,ord)
     local c=Instance.new("Frame") c.Size=UDim2.new(1,0,0,58) c.BackgroundColor3=Color3.fromRGB(15,15,20) c.BorderSizePixel=0 c.LayoutOrder=ord c.Parent=par
     Instance.new("UICorner",c).CornerRadius=UDim.new(0,6)
@@ -508,6 +514,8 @@ mkFriendControl(ap,5)
 mkSld(ap,"FOV","Fov",50,600,6,10)mkSld(ap,"Distancia","MaxDist",50,2000,7,50)mkSld(ap,"Suavidade","Smooth",0,5,8,0.1)
 local gp=pages["GUN"]
 mkTog(gp,"Sem recoil","NoRecoil",1)mkTog(gp,"Arma gigante (visual)","GunGiant",2)mkSld(gp,"Tamanho (visual)","GunSize",1,2,3,0.1)mkDrop(gp,"Som da arma","GunSound",{"Normal","Pato","Tiro realista"},4)
+mkTog(gp,"Sem recoil (visual)","NoRecoil",1)mkTog(gp,"Arma gigante (visual)","GunGiant",2)mkSld(gp,"Tamanho (visual)","GunSize",1,2,3,0.1)mkDrop(gp,"Som da arma (visual)","GunSound",{"Normal","Pato","Tiro realista"},4)
+mkAction(gp,"Resetar som da arma",5,function()cfg.GunSound="Normal"saveCfg()if resetGunSoundsAction then resetGunSoundsAction()end end)
 local tb={}
 local function sw(n)ct.Text=n for tn,pg in pairs(pages)do pg.Visible=(tn==n)end for tn,bt in pairs(tb)do if tn==n then T:Create(bt,TweenInfo.new(0.15),{BackgroundColor3=Color3.fromRGB(30,10,45)}):Play()bt.TextColor3=Color3.fromRGB(200,100,255)else T:Create(bt,TweenInfo.new(0.15),{BackgroundColor3=Color3.fromRGB(12,12,18)}):Play()bt.TextColor3=Color3.fromRGB(140,140,150)end end end
 local function mkTab(n,o)local b=Instance.new("TextButton")b.Size=UDim2.new(1,0,0,36)b.BackgroundColor3=Color3.fromRGB(12,12,18)b.Text="  "..n b.TextColor3=Color3.fromRGB(140,140,150)b.Font=Enum.Font.GothamBold b.TextSize=14 b.TextXAlignment=Enum.TextXAlignment.Left b.BorderSizePixel=0 b.AutoButtonColor=false b.LayoutOrder=o b.Parent=ts Instance.new("UICorner",b).CornerRadius=UDim.new(0,6)b.MouseButton1Click:Connect(sf(function()sw(n)end))tb[n]=b end
@@ -603,6 +611,7 @@ end
 local function rmESP(p)local e=cache[p]if e then for _,o in pairs(e)do pcall(function()o:Remove()end)end cache[p]=nil end end
 local function mkESP(p)if p==LP or cache[p]then return end if not p.Parent then return end local ok=pcall(function()cache[p]={ol=Drawing.new("Square"),bx=Drawing.new("Square"),nm=Drawing.new("Text"),ds=Drawing.new("Text"),hb=Drawing.new("Square"),hg=Drawing.new("Square"),ht=Drawing.new("Text")}end)if not ok then return end local e=cache[p]e.ol.Thickness=3 e.ol.Filled=false e.ol.Visible=false e.bx.Thickness=1 e.bx.Filled=false e.bx.Visible=false e.nm.Center=true e.nm.Outline=true e.nm.Visible=false e.ds.Center=true e.ds.Outline=true e.ds.Visible=false e.hg.Filled=true e.hg.Color=Color3.new()e.hg.Visible=false e.hb.Filled=true e.hb.Visible=false e.ht.Center=true e.ht.Outline=true e.ht.Visible=false end
 local function hideESP(e)e.ol.Visible=false e.bx.Visible=false e.nm.Visible=false e.ds.Visible=false e.hg.Visible=false e.hb.Visible=false e.ht.Visible=false end
+local function hideESP(e)pcall(function()e.ol.Visible=false e.bx.Visible=false e.nm.Visible=false e.ds.Visible=false e.hg.Visible=false e.hb.Visible=false e.ht.Visible=false end)end
 local function updESP()
     for p,e in pairs(cache) do
         if not p.Parent then
@@ -615,6 +624,8 @@ local function updESP()
             local ch=p.Character
             local hr=ch:FindFirstChild("HumanoidRootPart")
             local hd=ch:FindFirstChild("Head")
+            local hr=ch:FindFirstChild("HumanoidRootPart") or ch:FindFirstChild("UpperTorso") or ch:FindFirstChild("Torso") or ch.PrimaryPart
+            local hd=ch:FindFirstChild("Head") or hr
             local hm=ch:FindFirstChildOfClass("Humanoid")
             if not (hr and hd and hm) then
                 hideESP(e)
@@ -709,6 +720,15 @@ local function watchPlayer(p)
     p.CharacterAdded:Connect(function()
         task.wait(0.15)
         if cfg.En then mkESP(p) end
+        task.spawn(function()
+            for _=1,10 do
+                task.wait(0.15)
+                if not p.Parent then return end
+                if cfg.En then mkESP(p) end
+                local ch=p.Character
+                if ch and (ch:FindFirstChild("HumanoidRootPart") or ch:FindFirstChild("UpperTorso") or ch:FindFirstChild("Torso") or ch.PrimaryPart) then return end
+            end
+        end)
     end)
     p.CharacterRemoving:Connect(function()
         local e=cache[p]
@@ -815,8 +835,11 @@ local function updAim()
     end
 end
 local recoilHooks={}
+local recoilValueData={}
+local recoilAttrData={}
 local gunScaleData={}
 local gunSoundData={}
+local gunSoundOriginals={}
 local gunTool=nil
 local gunSoundTool=nil
 local gunSoundMode=nil
@@ -835,8 +858,40 @@ local function restoreRecoil()
         end
     end
     recoilHooks={}
+    for obj,value in pairs(recoilValueData) do
+        if obj and obj.Parent then pcall(function()obj.Value=value end) end
+    end
+    recoilValueData={}
+    for _,data in ipairs(recoilAttrData) do
+        if data.obj and data.obj.Parent then pcall(function()data.obj:SetAttribute(data.name,data.value)end) end
+    end
+    recoilAttrData={}
+end
+local function isRecoilName(name)
+    local n=string.lower(tostring(name or ""))
+    if n:find("decay",1,true) or n:find("delay",1,true) then return false end
+    return n=="recoil" or n:find("recoilmin",1,true) or n:find("recoilmax",1,true) or n:find("totalrecoil",1,true) or n:find("camerashake",1,true) or n:find("shakeamount",1,true) or n:find("camerakick",1,true)
+end
+local function disableRecoilConfig(tool)
+    local objects={tool}
+    for _,obj in ipairs(tool:GetDescendants()) do table.insert(objects,obj) end
+    for _,obj in ipairs(objects) do
+        if (obj:IsA("NumberValue") or obj:IsA("IntValue")) and isRecoilName(obj.Name) then
+            if recoilValueData[obj]==nil then recoilValueData[obj]=obj.Value end
+            obj.Value=0
+        end
+        for name,value in pairs(obj:GetAttributes()) do
+            if type(value)=="number" and isRecoilName(name) then
+                local found=false
+                for _,data in ipairs(recoilAttrData) do if data.obj==obj and data.name==name then found=true break end end
+                if not found then table.insert(recoilAttrData,{obj=obj,name=name,value=value}) end
+                obj:SetAttribute(name,0)
+            end
+        end
+    end
 end
 local function disableRecoil(tool)
+    disableRecoilConfig(tool)
     if type(getsenv)~="function" then return end
     for _,obj in ipairs(tool:GetDescendants()) do
         if obj:IsA("LocalScript") and not recoilHooks[obj] then
@@ -882,12 +937,14 @@ local function isShotSound(sound)
 end
 local function restoreGunSounds()
     for sound,id in pairs(gunSoundData) do
+        if gunSoundOriginals and gunSoundOriginals[sound] then id=gunSoundOriginals[sound] end
         if sound and sound.Parent then pcall(function()sound.SoundId=id end) end
     end
     gunSoundData={}
     gunSoundTool=nil
     gunSoundMode=nil
 end
+resetGunSoundsAction=restoreGunSounds
 local function applyGunSound(tool)
     local mode=tostring(cfg.GunSound or "Normal")
     if mode=="Normal" then restoreGunSounds() return end
@@ -898,6 +955,8 @@ local function applyGunSound(tool)
     for _,obj in ipairs(tool:GetDescendants()) do
         if obj:IsA("Sound") and isShotSound(obj) then
             gunSoundData[obj]=obj.SoundId
+            if not gunSoundOriginals[obj] then gunSoundOriginals[obj]=obj.SoundId end
+            gunSoundData[obj]=gunSoundOriginals[obj]
             pcall(function()obj.SoundId=id end)
         end
     end
@@ -909,11 +968,14 @@ local function updateGunEffects()
     if tool~=gunTool then
         restoreRecoil()
         restoreGunScale()
+        restoreGunSounds()
+        gunSoundOriginals={}
         gunTool=tool
     end
     if not tool then
         restoreRecoil()
         restoreGunSounds()
+        gunSoundOriginals={}
         return
     end
     if cfg.NoRecoil then
