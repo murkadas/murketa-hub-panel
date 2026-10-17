@@ -831,6 +831,10 @@ end
 local recoilHooks={}
 local recoilValueData={}
 local recoilAttrData={}
+local recoilSoundConnections={}
+local recoilCameraBase=nil
+local recoilCameraUntil=0
+local recoilLastCamera=C.CFrame
 local gunScaleData={}
 local gunSoundData={}
 local gunSoundOriginals={}
@@ -860,6 +864,8 @@ local function restoreRecoil()
         if data.obj and data.obj.Parent then pcall(function()data.obj:SetAttribute(data.name,data.value)end) end
     end
     recoilAttrData={}
+    recoilCameraBase=nil
+    recoilCameraUntil=0
 end
 local function isRecoilName(name)
     local n=string.lower(tostring(name or ""))
@@ -902,6 +908,45 @@ local function disableRecoil(tool)
         end
     end
 end
+local function isShotSound(sound)
+    local n=string.lower(sound.Name or "")
+    if n:find("reload",1,true) or n:find("equip",1,true) or n:find("empty",1,true) or n:find("hit",1,true) or n:find("impact",1,true) then return false end
+    return n:find("fire",1,true) or n:find("shoot",1,true) or n:find("shot",1,true) or n:find("muzzle",1,true) or n:find("blast",1,true)
+end
+local function registerRecoilSounds(tool)
+    for _,connection in ipairs(recoilSoundConnections) do pcall(function()connection:Disconnect()end) end
+    recoilSoundConnections={}
+    for _,obj in ipairs(tool:GetDescendants()) do
+        if obj:IsA("Sound") and isShotSound(obj) then
+            local ok,connection=pcall(function()
+                return obj.Played:Connect(function()
+                    if cfg.NoRecoil then
+                        recoilCameraBase=recoilLastCamera
+                        recoilCameraUntil=os.clock()+0.14
+                    end
+                end)
+            end)
+            if ok and connection then table.insert(recoilSoundConnections,connection) end
+        end
+    end
+end
+local function clearRecoilSounds()
+    for _,connection in ipairs(recoilSoundConnections) do pcall(function()connection:Disconnect()end) end
+    recoilSoundConnections={}
+    recoilCameraBase=nil
+    recoilCameraUntil=0
+end
+pcall(function()R:UnbindFromRenderStep("MurkNoRecoilCamera")end)
+R:BindToRenderStep("MurkNoRecoilCamera",Enum.RenderPriority.Camera.Value+1,function()
+    if cfg.NoRecoil and recoilCameraBase and os.clock()<recoilCameraUntil then
+        local current=C.CFrame
+        local position=current.Position
+        pcall(function()C.CFrame=CFrame.lookAt(position,position+recoilCameraBase.LookVector,recoilCameraBase.UpVector)end)
+    else
+        recoilCameraBase=nil
+    end
+    recoilLastCamera=C.CFrame
+end)
 local function restoreGunScale()
     for obj,data in pairs(gunScaleData) do
         if obj and obj.Parent then
@@ -924,11 +969,6 @@ local function applyGunScale(tool,scale)
     end
 end
 local gunSoundIds={Pato="rbxassetid://162958822",["Tiro realista"]="rbxassetid://2811598570"}
-local function isShotSound(sound)
-    local n=string.lower(sound.Name or "")
-    if n:find("reload",1,true) or n:find("equip",1,true) or n:find("empty",1,true) or n:find("hit",1,true) or n:find("impact",1,true) then return false end
-    return n:find("fire",1,true) or n:find("shoot",1,true) or n:find("shot",1,true) or n:find("muzzle",1,true) or n:find("blast",1,true)
-end
 local function restoreGunSounds()
     for sound,id in pairs(gunSoundData) do
         if gunSoundOriginals and gunSoundOriginals[sound] then id=gunSoundOriginals[sound] end
@@ -964,11 +1004,14 @@ local function updateGunEffects()
         restoreGunSounds()
         gunSoundOriginals={}
         gunTool=tool
+        clearRecoilSounds()
+        if tool then registerRecoilSounds(tool) end
     end
     if not tool then
         restoreRecoil()
         restoreGunSounds()
         gunSoundOriginals={}
+        clearRecoilSounds()
         return
     end
     if cfg.NoRecoil then
