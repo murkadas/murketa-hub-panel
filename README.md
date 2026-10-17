@@ -828,6 +828,13 @@ local function updAim()
         C.CFrame=C.CFrame:Lerp(CFrame.new(C.CFrame.Position,t.Position),factor)
     end
 end
+local recoilHooks={}
+local recoilValueData={}
+local recoilAttrData={}
+local recoilSoundConnections={}
+local recoilCameraBase=nil
+local recoilCameraUntil=0
+local recoilLastCamera=C.CFrame
 local gunScaleData={}
 local gunSoundData={}
 local gunSoundOriginals={}
@@ -841,14 +848,6 @@ local function currentGun()
     end
     return nil
 end
-local recoilHooks={}
-local recoilValueData={}
-local recoilAttrData={}
-local recoilSoundConnections={}
-local recoilCameraBase=nil
-local recoilCameraUntil=0
-local recoilLastCamera=C.CFrame
-local recoilOffsetBase=Vector3.zero
 local function restoreRecoil()
     for _,data in pairs(recoilHooks) do
         if data.env then
@@ -923,7 +922,6 @@ local function registerRecoilSounds(tool)
                 return obj.Played:Connect(function()
                     if cfg.NoRecoil then
                         recoilCameraBase=recoilLastCamera
-                        recoilOffsetBase=Vector3.zero
                         recoilCameraUntil=os.clock()+0.32
                     end
                 end)
@@ -939,13 +937,11 @@ local function clearRecoilSounds()
     recoilCameraUntil=0
 end
 pcall(function()R:UnbindFromRenderStep("MurkNoRecoilCamera")end)
-R:BindToRenderStep("MurkNoRecoilCamera",Enum.RenderPriority.Camera.Value+10,function()
+R:BindToRenderStep("MurkNoRecoilCamera",Enum.RenderPriority.Camera.Value+1,function()
     if cfg.NoRecoil and recoilCameraBase and os.clock()<recoilCameraUntil then
         local current=C.CFrame
         local position=current.Position
         pcall(function()C.CFrame=CFrame.lookAt(position,position+recoilCameraBase.LookVector,recoilCameraBase.UpVector)end)
-        local hum=LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-        if hum then pcall(function()hum.CameraOffset=recoilOffsetBase end) end
     else
         recoilCameraBase=nil
     end
