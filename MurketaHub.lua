@@ -189,7 +189,7 @@ end
 if not authenticate() then
     return
 end
-print("[MURK] BUILD 22 - sons por disparo e reset normal corrigidos")
+print("[MURK] BUILD 23 - FireSound por disparo corrigido")
 -- O restante do seu script MURK vem abaixo deste bloco.
 local P=game:GetService("Players")local R=game:GetService("RunService")local U=game:GetService("UserInputService")local T=game:GetService("TweenService")local LP=P.LocalPlayer local C=workspace.CurrentCamera
 local cfg={En=false,Box=true,Nm=true,Dst=true,Hp=true,CarESP=false,CarBox=true,CarNm=true,CarDst=true,EspHue=0.58,CarHue=0.10,Fs=14,FriendQuery="",Friends={},Team=false,Aim=false,AimPart="Head",Fov=150,Smooth=2,WallCheck=true,IgnoreTeam=true,MaxDist=500,NoRecoil=false,GunGiant=false,GunSize=2,GunSound="Normal"}
@@ -876,8 +876,7 @@ local function disableRecoil(tool)
 end
 local function isShotSound(sound)
     local n=string.lower(sound.Name or "")
-    if n:find("reload",1,true) or n:find("equip",1,true) or n:find("empty",1,true) or n:find("hit",1,true) or n:find("impact",1,true) then return false end
-    return n:find("fire",1,true) or n:find("shoot",1,true) or n:find("shot",1,true) or n:find("muzzle",1,true) or n:find("blast",1,true)
+    return n=="firesound" or n=="shootsound" or n=="shotsound"
 end
 local function restoreGunScale()
     for obj,data in pairs(gunScaleData) do
@@ -925,31 +924,18 @@ local function setupGunPlayback(tool)
     clearGunPlayback()
     for _,obj in ipairs(tool:GetDescendants()) do
         if obj:IsA("Sound") and isShotSound(obj) then
-            local state={lastPosition=0,lastShot=0}
-            gunPlaybackStates[obj]=state
-            local function emitShot()
-                local mode=tostring(cfg.GunSound or "Normal")
-                local id=gunSoundIds[mode]
-                if mode=="Normal" or not id or not obj.Parent or os.clock()-state.lastShot<0.035 then return end
-                local original=gunSoundOriginals[obj]
-                local volume=type(original)=="table" and original.volume or 1
-                playGunClone(obj,id,volume)
-                state.lastShot=os.clock()
-            end
-            local okPlaying,playingConnection=pcall(function()
-                return obj:GetPropertyChangedSignal("Playing"):Connect(function()
-                    if obj.Playing then emitShot() end
+            local ok,connection=pcall(function()
+                return obj.Played:Connect(function()
+                    local mode=tostring(cfg.GunSound or "Normal")
+                    local id=gunSoundIds[mode]
+                    if mode=="Normal" or not id or not obj.Parent then return end
+                    local original=gunSoundOriginals[obj]
+                    local volume=type(original)=="table" and original.volume or obj.Volume
+                    if not volume or volume<=0 then volume=1 end
+                    playGunClone(obj,id,volume)
                 end)
             end)
-            if okPlaying and playingConnection then table.insert(gunPlaybackConnections,playingConnection) end
-            local okPosition,positionConnection=pcall(function()
-                return obj:GetPropertyChangedSignal("TimePosition"):Connect(function()
-                    local position=obj.TimePosition
-                    if obj.Playing and state.lastPosition>0.05 and position+0.05<state.lastPosition then emitShot() end
-                    state.lastPosition=position
-                end)
-            end)
-            if okPosition and positionConnection then table.insert(gunPlaybackConnections,positionConnection) end
+            if ok and connection then table.insert(gunPlaybackConnections,connection) end
         end
     end
 end
@@ -994,7 +980,10 @@ local function applyGunSound(tool)
     if mode=="Normal" then
         local wasActive=gunSoundTool~=nil or gunSoundMode~=nil
         restoreGunSounds()
-        if wasActive then setupGunPlayback(tool) end
+        if wasActive then
+            clearGunPlayback()
+            setupGunPlayback(tool)
+        end
         return
     end
     if gunSoundTool==tool and gunSoundMode==mode then return end
