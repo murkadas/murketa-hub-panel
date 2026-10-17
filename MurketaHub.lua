@@ -922,7 +922,7 @@ local function registerRecoilSounds(tool)
                 return obj.Played:Connect(function()
                     if cfg.NoRecoil then
                         recoilCameraBase=recoilLastCamera
-                        recoilCameraUntil=os.clock()+0.14
+                        recoilCameraUntil=os.clock()+0.32
                     end
                 end)
             end)
