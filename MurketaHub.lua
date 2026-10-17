@@ -513,7 +513,6 @@ mkDrop(ap,"Parte","AimPart",{"Head","Torso","HumanoidRootPart"},4)
 mkFriendControl(ap,5)
 mkSld(ap,"FOV","Fov",50,600,6,10)mkSld(ap,"Distancia","MaxDist",50,2000,7,50)mkSld(ap,"Suavidade","Smooth",0,5,8,0.1)
 local gp=pages["GUN"]
-mkTog(gp,"Sem recoil","NoRecoil",1)mkTog(gp,"Arma gigante (visual)","GunGiant",2)mkSld(gp,"Tamanho (visual)","GunSize",1,2,3,0.1)mkDrop(gp,"Som da arma","GunSound",{"Normal","Pato","Tiro realista"},4)
 mkTog(gp,"Sem recoil (visual)","NoRecoil",1)mkTog(gp,"Arma gigante (visual)","GunGiant",2)mkSld(gp,"Tamanho (visual)","GunSize",1,2,3,0.1)mkDrop(gp,"Som da arma","GunSound",{"Normal","Pato","Tiro realista"},4)
 mkAction(gp,"Resetar som da arma",5,function()cfg.GunSound="Normal"saveCfg()if resetGunSoundsAction then resetGunSoundsAction()end end)
 local tb={}
@@ -610,7 +609,6 @@ if carRoot then
 end
 local function rmESP(p)local e=cache[p]if e then for _,o in pairs(e)do pcall(function()o:Remove()end)end cache[p]=nil end end
 local function mkESP(p)if p==LP or cache[p]then return end if not p.Parent then return end local ok=pcall(function()cache[p]={ol=Drawing.new("Square"),bx=Drawing.new("Square"),nm=Drawing.new("Text"),ds=Drawing.new("Text"),hb=Drawing.new("Square"),hg=Drawing.new("Square"),ht=Drawing.new("Text")}end)if not ok then return end local e=cache[p]e.ol.Thickness=3 e.ol.Filled=false e.ol.Visible=false e.bx.Thickness=1 e.bx.Filled=false e.bx.Visible=false e.nm.Center=true e.nm.Outline=true e.nm.Visible=false e.ds.Center=true e.ds.Outline=true e.ds.Visible=false e.hg.Filled=true e.hg.Color=Color3.new()e.hg.Visible=false e.hb.Filled=true e.hb.Visible=false e.ht.Center=true e.ht.Outline=true e.ht.Visible=false end
-local function hideESP(e)e.ol.Visible=false e.bx.Visible=false e.nm.Visible=false e.ds.Visible=false e.hg.Visible=false e.hb.Visible=false e.ht.Visible=false end
 local function hideESP(e)pcall(function()e.ol.Visible=false e.bx.Visible=false e.nm.Visible=false e.ds.Visible=false e.hg.Visible=false e.hb.Visible=false e.ht.Visible=false end)end
 local function updESP()
     for p,e in pairs(cache) do
@@ -622,8 +620,6 @@ local function updESP()
         end
         if p.Parent and p.Character then
             local ch=p.Character
-            local hr=ch:FindFirstChild("HumanoidRootPart")
-            local hd=ch:FindFirstChild("Head")
             local hr=ch:FindFirstChild("HumanoidRootPart") or ch:FindFirstChild("UpperTorso") or ch:FindFirstChild("Torso") or ch.PrimaryPart
             local hd=ch:FindFirstChild("Head") or hr
             local hm=ch:FindFirstChildOfClass("Humanoid")
@@ -718,8 +714,6 @@ local function clrESP()for p in pairs(cache)do rmESP(p)end end
 local function watchPlayer(p)
     if p==LP then return end
     p.CharacterAdded:Connect(function()
-        task.wait(0.15)
-        if cfg.En then mkESP(p) end
         task.spawn(function()
             for _=1,10 do
                 task.wait(0.15)
@@ -954,7 +948,6 @@ local function applyGunSound(tool)
     if not id then return end
     for _,obj in ipairs(tool:GetDescendants()) do
         if obj:IsA("Sound") and isShotSound(obj) then
-            gunSoundData[obj]=obj.SoundId
             if not gunSoundOriginals[obj] then gunSoundOriginals[obj]=obj.SoundId end
             gunSoundData[obj]=gunSoundOriginals[obj]
             pcall(function()obj.SoundId=id end)
