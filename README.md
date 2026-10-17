@@ -31,6 +31,17 @@ POST https://SEU-DOMINIO/activate
 
 O bloco do script deve enviar JSON com `key` e `hwid`. A primeira ativação vincula a HWID; uma diferente recebe `HWID_MISMATCH`.
 
+## Banco persistente gratuito com Supabase
+
+Para não perder keys quando o Render gratuito dormir, crie uma tabela no Supabase usando o arquivo `supabase-schema.sql` no SQL Editor. Depois adicione somente no ambiente do Render:
+
+```env
+SUPABASE_URL=https://SEU-PROJETO.supabase.co
+SUPABASE_SECRET_KEY=sua-chave-secreta-do-servidor
+```
+
+Mantenha essa chave apenas no Render; nunca coloque a chave secreta no GitHub ou no script Roblox. Quando essas duas variáveis existem, o servidor usa Supabase como fonte principal e mantém `keys.json` apenas como cópia local de apoio.
+
 ## Produção
 
 Para compradores externos, publique este projeto em um serviço cloud ou VPS com HTTPS. Não use `localhost` no script do comprador. Configure um volume persistente para `keys.json`; sem isso, um redeploy pode apagar as licenças.

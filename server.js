@@ -22,6 +22,8 @@ const DATA_FILE = process.env.KEYS_FILE || path.join(ROOT, "keys.json");
 const PORT = Number(process.env.PORT || process.env.API_PORT || 3000);
 const KEY_SECRET = String(process.env.KEY_SECRET || "change-this-secret");
 const ADMIN_SECRET = String(process.env.ADMIN_SECRET || KEY_SECRET);
+const SUPABASE_URL = String(process.env.SUPABASE_URL || "").trim().replace(/\/$/, "");
+const SUPABASE_SECRET_KEY = String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 const sessions = new Map();
 
 function readDatabase() {
@@ -30,11 +32,81 @@ function readDatabase() {
 }
 
 const database = readDatabase();
+const remoteDatabaseEnabled = Boolean(SUPABASE_URL && SUPABASE_SECRET_KEY);
+let persistenceQueue = Promise.resolve();
+
+async function supabaseRequest(resource, options = {}) {
+  const response = await fetch(`${SUPABASE_URL}${resource}`, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_SECRET_KEY,
+      Authorization: `Bearer ${SUPABASE_SECRET_KEY}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`Supabase HTTP ${response.status}: ${text.slice(0, 300)}`);
+  return text ? JSON.parse(text) : null;
+}
+
+async function syncDatabase() {
+  if (!remoteDatabaseEnabled) return;
+  const rows = Object.entries(database).map(([id, payload]) => ({ id, payload }));
+  if (!rows.length) return;
+  await supabaseRequest("/rest/v1/murketa_keys?on_conflict=id", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates" },
+    body: JSON.stringify(rows)
+  });
+}
+
+async function removeRemoteRecord(id) {
+  if (!remoteDatabaseEnabled) return;
+  await supabaseRequest(`/rest/v1/murketa_keys?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+function queuePersistence() {
+  if (!remoteDatabaseEnabled) return;
+  persistenceQueue = persistenceQueue
+    .then(() => syncDatabase())
+    .catch(error => console.error(`[MURKETA] Falha ao sincronizar Supabase: ${error.message}`));
+}
+
+async function flushPersistence() {
+  await persistenceQueue;
+}
+
+async function hydrateDatabase() {
+  if (!remoteDatabaseEnabled) {
+    console.log("[MURKETA] Armazenamento: arquivo local");
+    return;
+  }
+
+  const rows = await supabaseRequest("/rest/v1/murketa_keys?select=id,payload");
+  if (rows.length > 0) {
+    for (const row of rows) database[row.id] = row.payload;
+    console.log(`[MURKETA] Armazenamento: Supabase (${rows.length} keys carregadas)`);
+    return;
+  }
+
+  if (Object.keys(database).length > 0) {
+    await syncDatabase();
+    console.log(`[MURKETA] Migração inicial: ${Object.keys(database).length} keys enviadas ao Supabase`);
+  } else {
+    console.log("[MURKETA] Armazenamento: Supabase (vazio)");
+  }
+}
 
 function save() {
-  const temp = `${DATA_FILE}.tmp`;
-  fs.writeFileSync(temp, JSON.stringify(database, null, 2));
-  fs.renameSync(temp, DATA_FILE);
+  try {
+    const temp = `${DATA_FILE}.tmp`;
+    fs.writeFileSync(temp, JSON.stringify(database, null, 2));
+    fs.renameSync(temp, DATA_FILE);
+  } catch (error) {
+    console.warn(`[MURKETA] Não foi possível salvar o arquivo local: ${error.message}`);
+  }
+  queuePersistence();
 }
 
 function digest(value) {
@@ -209,19 +281,26 @@ async function api(request, response, url) {
       createdAt: new Date().toISOString(), hwid: null, boundAt: null, lastSeen: null
     };
     save();
+    await flushPersistence();
     return send(response, 201, { ok: true, key: publicRecord(digest(key), database[digest(key)]) });
   }
 
   if (request.method === "POST" && url.pathname === "/api/keys/cleanup") {
     updateExpired();
     let removed = 0;
+    const removedIds = [];
     for (const [id, record] of Object.entries(database)) {
       if (record.status === "expired" || record.status === "revoked") {
         delete database[id];
+        removedIds.push(id);
         removed += 1;
       }
     }
-    if (removed) save();
+    if (removed) {
+      save();
+      await flushPersistence();
+      await Promise.all(removedIds.map(removeRemoteRecord));
+    }
     return send(response, 200, { ok: true, removed });
   }
 
@@ -234,17 +313,21 @@ async function api(request, response, url) {
       if (record.status === "active") return send(response, 400, { ok: false, error: "ACTIVE_KEY" });
       delete database[action[1]];
       save();
+      await flushPersistence();
+      await removeRemoteRecord(action[1]);
       return send(response, 200, { ok: true, deleted: true });
     }
     save();
+    await flushPersistence();
     return send(response, 200, { ok: true, key: publicRecord(action[1], record) });
   }
 
   return send(response, 404, { ok: false, error: "NOT_FOUND" });
 }
 
-function activate(request, response) {
-  return body(request).then(input => {
+async function activate(request, response) {
+  try {
+    const input = await body(request);
     updateExpired();
     const key = String(input.key || "").trim().toUpperCase();
     const hwid = String(input.hwid || "").trim();
@@ -257,9 +340,12 @@ function activate(request, response) {
     if (!record.hwid) { record.hwid = digest(hwid); record.boundAt = new Date().toISOString(); }
     record.lastSeen = new Date().toISOString();
     save();
+    await flushPersistence();
     const ms = record.expiresAt ? Math.max(0, Date.parse(record.expiresAt) - Date.now()) : null;
     return send(response, 200, { ok: true, expiresAt: record.expiresAt, remainingMs: ms, remainingSeconds: ms === null ? null : Math.ceil(ms / 1000) });
-  }).catch(() => send(response, 400, { ok: false, error: "BAD_REQUEST" }));
+  } catch {
+    return send(response, 400, { ok: false, error: "BAD_REQUEST" });
+  }
 }
 
 function serveStatic(request, response, url) {
@@ -272,9 +358,14 @@ function serveStatic(request, response, url) {
   fs.createReadStream(file).pipe(response);
 }
 
+const databaseReady = hydrateDatabase().catch(error => {
+  console.error(`[MURKETA] Supabase indisponível; usando dados locais: ${error.message}`);
+});
+
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   try {
+    await databaseReady;
     if (request.method === "GET" && url.pathname === "/health") return send(response, 200, { ok: true, service: "murketa-hub" });
     if (request.method === "POST" && url.pathname === "/activate") return activate(request, response);
     if (url.pathname.startsWith("/api/")) return await api(request, response, url);
@@ -285,4 +376,4 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
-server.listen(PORT, () => console.log(`[MURKETA] Painel online em http://localhost:${PORT}`));
+databaseReady.then(() => server.listen(PORT, () => console.log(`[MURKETA] Painel online em http://localhost:${PORT}`)));
