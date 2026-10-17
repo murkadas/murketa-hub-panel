@@ -189,7 +189,7 @@ end
 if not authenticate() then
     return
 end
-print("[MURK] BUILD 23 - FireSound por disparo corrigido")
+print("[MURK] BUILD 25 - sons restaurados com troca direta")
 -- O restante do seu script MURK vem abaixo deste bloco.
 local P=game:GetService("Players")local R=game:GetService("RunService")local U=game:GetService("UserInputService")local T=game:GetService("TweenService")local LP=P.LocalPlayer local C=workspace.CurrentCamera
 local cfg={En=false,Box=true,Nm=true,Dst=true,Hp=true,CarESP=false,CarBox=true,CarNm=true,CarDst=true,EspHue=0.58,CarHue=0.10,Fs=14,FriendQuery="",Friends={},Team=false,Aim=false,AimPart="Head",Fov=150,Smooth=2,WallCheck=true,IgnoreTeam=true,MaxDist=500,NoRecoil=false,GunGiant=false,GunSize=2,GunSound="Normal"}
@@ -834,9 +834,6 @@ end
 local gunScaleData={}
 local gunSoundData={}
 local gunSoundOriginals={}
-local gunPlaybackConnections={}
-local gunPlaybackStates={}
-local gunPlaybackClones={}
 local gunTool=nil
 local gunSoundTool=nil
 local gunSoundMode=nil
@@ -900,59 +897,14 @@ local function applyGunScale(tool,scale)
     end
 end
 local gunSoundIds={
-    Pato="rbxassetid://162958822",
+    ["Pato"]="rbxassetid://162958822",
     ["Tiro realista"]="rbxassetid://2811598570",
     ["Canhão"]="rbxassetid://3091133241",
-    Espingarda="rbxassetid://5656322299",
+    ["Espingarda"]="rbxassetid://5656322299",
     ["Tiro pesado"]="rbxassetid://81432389771942",
     ["Laser/Sci-fi"]="rbxassetid://9119772752",
-    Gunshot="rbxassetid://5871732627"
+    ["Gunshot"]="rbxassetid://5871732627"
 }
-local function clearGunPlayback()
-    for _,connection in ipairs(gunPlaybackConnections) do
-        pcall(function()connection:Disconnect()end)
-    end
-    gunPlaybackConnections={}
-    gunPlaybackStates={}
-    for _,clone in ipairs(gunPlaybackClones) do
-        pcall(function()clone:Destroy()end)
-    end
-    gunPlaybackClones={}
-end
-local playGunClone
-local function setupGunPlayback(tool)
-    clearGunPlayback()
-    for _,obj in ipairs(tool:GetDescendants()) do
-        if obj:IsA("Sound") and isShotSound(obj) then
-            local ok,connection=pcall(function()
-                return obj.Played:Connect(function()
-                    local mode=tostring(cfg.GunSound or "Normal")
-                    local id=gunSoundIds[mode]
-                    if mode=="Normal" or not id or not obj.Parent then return end
-                    local original=gunSoundOriginals[obj]
-                    local volume=type(original)=="table" and original.volume or obj.Volume
-                    if not volume or volume<=0 then volume=1 end
-                    playGunClone(obj,id,volume)
-                end)
-            end)
-            if ok and connection then table.insert(gunPlaybackConnections,connection) end
-        end
-    end
-end
-playGunClone=function(obj,id,volume)
-    local ok,clone=pcall(function()
-        local copy=obj:Clone()
-        copy.Name="MurkShotPlayback"
-        copy.SoundId=id
-        copy.Volume=volume
-        copy.Parent=obj.Parent
-        return copy
-    end)
-    if not ok or not clone then return end
-    table.insert(gunPlaybackClones,clone)
-    clone.Ended:Connect(function()pcall(function()clone:Destroy()end)end)
-    pcall(function()clone:Play()end)
-end
 local function restoreGunSounds()
     for sound,data in pairs(gunSoundData) do
         local original=gunSoundOriginals and gunSoundOriginals[sound]
@@ -971,25 +923,18 @@ local function restoreGunSounds()
 end
 resetGunSoundsAction=function()
     restoreGunSounds()
-    clearGunPlayback()
-    local tool=currentGun()
-    if tool then setupGunPlayback(tool) end
 end
 local function applyGunSound(tool)
     local mode=tostring(cfg.GunSound or "Normal")
     if mode=="Normal" then
-        local wasActive=gunSoundTool~=nil or gunSoundMode~=nil
         restoreGunSounds()
-        if wasActive then
-            clearGunPlayback()
-            setupGunPlayback(tool)
-        end
         return
     end
-    if gunSoundTool==tool and gunSoundMode==mode then return end
-    restoreGunSounds()
     local id=gunSoundIds[mode]
     if not id then return end
+    if gunSoundTool~=tool or gunSoundMode~=mode then
+        restoreGunSounds()
+    end
     for _,obj in ipairs(tool:GetDescendants()) do
         if obj:IsA("Sound") and isShotSound(obj) then
             if not gunSoundOriginals[obj] then
@@ -997,14 +942,14 @@ local function applyGunSound(tool)
             end
             gunSoundData[obj]=true
             pcall(function()
-                obj.SoundId=id
-                obj.Volume=0
+                -- Troca somente o ID do FireSound. O jogo continua tocando
+                -- o som normalmente em cada disparo, sem clones ou volume forçado.
+                if obj.SoundId~=id then obj.SoundId=id end
             end)
         end
     end
     gunSoundTool=tool
     gunSoundMode=mode
-    setupGunPlayback(tool)
 end
 local function updateGunEffects()
     local tool=currentGun()
@@ -1014,14 +959,11 @@ local function updateGunEffects()
         restoreGunSounds()
         gunSoundOriginals={}
         gunTool=tool
-        clearGunPlayback()
-        if tool then setupGunPlayback(tool) end
     end
     if not tool then
         restoreRecoil()
         restoreGunSounds()
         gunSoundOriginals={}
-        clearGunPlayback()
         return
     end
     if cfg.NoRecoil then
