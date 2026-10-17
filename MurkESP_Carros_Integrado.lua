@@ -12,7 +12,7 @@ local function formatRemaining(totalSeconds)
     totalSeconds = math.max(0, math.floor(tonumber(totalSeconds) or 0))
     local days = math.floor(totalSeconds / 86400)
     totalSeconds = totalSeconds % 86400
-    local hours = math.floor(totalSeconds / 3600)manda
+    local hours = math.floor(totalSeconds / 3600)
     totalSeconds = totalSeconds % 3600
     local minutes = math.floor(totalSeconds / 60)
     local seconds = totalSeconds % 60
