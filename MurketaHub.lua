@@ -189,7 +189,7 @@ end
 if not authenticate() then
     return
 end
-print("[MURK] BUILD 25 - sons restaurados com troca direta")
+print("[MURK] BUILD 26 - sons removidos: Laser/Sci-fi, Normal e Pato")
 -- O restante do seu script MURK vem abaixo deste bloco.
 local P=game:GetService("Players")local R=game:GetService("RunService")local U=game:GetService("UserInputService")local T=game:GetService("TweenService")local LP=P.LocalPlayer local C=workspace.CurrentCamera
 local cfg={En=false,Box=true,Nm=true,Dst=true,Hp=true,CarESP=false,CarBox=true,CarNm=true,CarDst=true,EspHue=0.58,CarHue=0.10,Fs=14,FriendQuery="",Friends={},Team=false,Aim=false,AimPart="Head",Fov=150,Smooth=2,WallCheck=true,IgnoreTeam=true,MaxDist=500,NoRecoil=false,GunGiant=false,GunSize=2,GunSound="Normal"}
@@ -205,6 +205,7 @@ local function saveCfg()
     pcall(function()writefile(CFG_FILE,HttpService:JSONEncode(cfg))end)
 end
 loadCfg()
+if cfg.GunSound=="Pato" or cfg.GunSound=="Laser/Sci-fi" then cfg.GunSound="Tiro realista" end
 local cache={}local gui,frame,mtog,sbar,content,licenseLabel,homeExpiryLabel,homeStreamerButton local open=false local collapsed=false local streamerMode=false local hue=0 local isM=U.TouchEnabled and not U.MouseEnabled
 local resetGunSoundsAction=nil
 local rgb={}local fovC=nil
@@ -516,7 +517,7 @@ mkDrop(ap,"Parte","AimPart",{"Head","Torso","HumanoidRootPart"},4)
 mkFriendControl(ap,5)
 mkSld(ap,"FOV","Fov",50,600,6,10)mkSld(ap,"Distancia","MaxDist",50,2000,7,50)mkSld(ap,"Suavidade","Smooth",0,5,8,0.1)
 local gp=pages["GUN"]
-mkTog(gp,"Sem recoil","NoRecoil",1)mkTog(gp,"Arma gigante (visual)","GunGiant",2)mkSld(gp,"Tamanho","GunSize",1,2,3,0.1)mkDrop(gp,"Som da arma","GunSound",{"Normal","Pato","Tiro realista","Canhão","Espingarda","Tiro pesado","Laser/Sci-fi","Gunshot"},4)
+mkTog(gp,"Sem recoil","NoRecoil",1)mkTog(gp,"Arma gigante (visual)","GunGiant",2)mkSld(gp,"Tamanho","GunSize",1,2,3,0.1)mkDrop(gp,"Som da arma","GunSound",{"Tiro realista","Canhão","Espingarda","Tiro pesado","Gunshot"},4)
 mkAction(gp,"Resetar som da arma",5,function()cfg.GunSound="Normal"saveCfg()if resetGunSoundsAction then resetGunSoundsAction()end end)
 local tb={}
 local function sw(n)ct.Text=n for tn,pg in pairs(pages)do pg.Visible=(tn==n)end for tn,bt in pairs(tb)do if tn==n then T:Create(bt,TweenInfo.new(0.15),{BackgroundColor3=Color3.fromRGB(30,10,45)}):Play()bt.TextColor3=Color3.fromRGB(200,100,255)else T:Create(bt,TweenInfo.new(0.15),{BackgroundColor3=Color3.fromRGB(12,12,18)}):Play()bt.TextColor3=Color3.fromRGB(140,140,150)end end end
@@ -897,12 +898,10 @@ local function applyGunScale(tool,scale)
     end
 end
 local gunSoundIds={
-    ["Pato"]="rbxassetid://162958822",
     ["Tiro realista"]="rbxassetid://2811598570",
     ["Canhão"]="rbxassetid://3091133241",
     ["Espingarda"]="rbxassetid://5656322299",
     ["Tiro pesado"]="rbxassetid://81432389771942",
-    ["Laser/Sci-fi"]="rbxassetid://9119772752",
     ["Gunshot"]="rbxassetid://5871732627"
 }
 local function restoreGunSounds()
